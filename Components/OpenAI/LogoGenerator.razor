@@ -1,0 +1,65 @@
+﻿@page "/logo-generator"
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+
+<div class="container py-5" style="background-color: #f8f9fa;">
+    <h2 class="mb-4">🎨 AI Logo Generator</h2>
+
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <input class="form-control form-control-lg" placeholder="Describe your logo idea..." @bind="Prompt" />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" @bind="SelectedModel">
+                <option value="dall-e-2">DALL·E 2</option>
+                <option value="dall-e-3">DALL·E 3</option>
+                <option value="gpt-image-1">GPT-Image-1</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="btn btn-primary" @onclick="GenerateLogos" disabled="@IsLoading">
+        @(IsLoading ? "Generating..." : "Generate Logos")
+    </button>
+
+    @if (ImageUrls.Count > 0)
+    {
+        <div class="mt-4 row g-3">
+            @foreach (var url in ImageUrls)
+            {
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <img src="@url" class="card-img-top" />
+                        <div class="card-body text-center">
+                            <a href="@url" target="_blank" class="btn btn-outline-secondary">Download</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string Prompt = "Minimalist lion logo for tech startup";
+    private string SelectedModel = "dall-e-3";
+    private bool IsLoading = false;
+    private List<string> ImageUrls = new();
+
+    private async Task GenerateLogos()
+    {
+        IsLoading = true;
+        ImageUrls.Clear();
+
+        try
+        {
+            ImageUrls = await OpenAIService.GenerateLogoImagesAsync(Prompt, SelectedModel);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error: {ex.Message}");
+        }
+
+        IsLoading = false;
+    }
+}

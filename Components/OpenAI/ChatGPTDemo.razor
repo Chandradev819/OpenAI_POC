@@ -1,0 +1,84 @@
+﻿@page "/chatgpt-demo"
+@using OpenAI_POC.Helper
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+
+<div class="container-fluid d-flex flex-column vh-100">
+    <!-- Header -->
+    <div class="bg-dark text-white py-3 px-4">
+        <h5 class="mb-0">🧠 Chat with OpenAI</h5>
+    </div>
+
+    <!-- Chat Messages Area -->
+    <div class="flex-grow-1 overflow-auto p-3 bg-light">
+        @foreach (var message in messages)
+        {
+            var isUser = message.Role == "You";
+            var bubbleClass = isUser ? "bg-success text-white py-2 px-3" : "bg-white border py-2 px-3";
+            var containerClass = isUser ? "d-flex justify-content-end" : "d-flex justify-content-start";
+            <div class="@containerClass mb-2">
+                <div class="@bubbleClass p-3 rounded shadow-sm" style="max-width: 75%; display: inline-block;">
+                    <div class="fw-bold small">@message.Role</div>
+                    <div class="markdown-body">
+                        @((MarkupString)MarkdownHelper.ToHtml(message.Content))
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (isLoading)
+        {
+            <div class="text-muted fst-italic">⏳ Thinking...</div>
+        }
+    </div>
+
+    <!-- Chat Input Footer -->
+    <div class="border-top bg-white p-3">
+        <div class="input-group">
+            <textarea class="form-control" rows="2" @bind="userPrompt"
+                      placeholder="Type your message here..."></textarea>
+            <button class="btn btn-primary" @onclick="SendMessage" disabled="@isLoading">
+                Send
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string userPrompt = string.Empty;
+    private bool isLoading = false;
+    private List<ChatMessage> messages = new();
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(userPrompt)) return;
+
+        isLoading = true;
+        messages.Add(new ChatMessage("You", userPrompt));
+
+        try
+        {
+            var reply = await OpenAIService.CreateChatResponse(userPrompt);
+            messages.Add(new ChatMessage("AI", reply));
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage("System", $"Error: {ex.Message}"));
+        }
+
+        userPrompt = string.Empty;
+        isLoading = false;
+    }
+
+    public class ChatMessage
+    {
+        public string Role { get; set; }
+        public string Content { get; set; }
+
+        public ChatMessage(string role, string content)
+        {
+            Role = role;
+            Content = content;
+        }
+    }
+}

@@ -1,0 +1,117 @@
+﻿@page "/resume-bio"
+@using System.Text
+@using OpenAI_POC.Helper
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+@inject IJSRuntime JS
+
+<div class="container my-3">
+    <h3 class="mb-4">🧾 Resume & LinkedIn Bio Generator</h3>
+
+    <div class="row mb-3">
+        <div class="col-md-6 mb-2">
+            <input class="form-control" placeholder="Your Name" @bind="name" />
+        </div>
+        <div class="col-md-6 mb-2">
+            <input class="form-control" placeholder="Job Role (e.g., Software Engineer)" @bind="role" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4 mb-2">
+            <input class="form-control" placeholder="Years of Experience" @bind="experience" />
+        </div>
+        <div class="col-md-8 mb-2">
+            <input class="form-control" placeholder="Skills (comma-separated)" @bind="skills" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary mb-3" @onclick="GenerateSummary" disabled="@isLoading">
+        @(isLoading ? "Generating..." : "Generate Summary")
+    </button>
+
+    @if (!string.IsNullOrWhiteSpace(resultMarkdown))
+    {
+        <div class="card mt-3">
+            <div class="card-header fw-bold">📋 Generated Content</div>
+            <div class="card-body markdown-body">
+                @((MarkupString)MarkdownHelper.ToHtml(resultMarkdown))
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button class="btn btn-outline-success me-2" @onclick="ExportAsMarkdown">📥 Export as .md</button>
+            <button class="btn btn-outline-secondary" @onclick="ExportAsText">📥 Export as .txt</button>
+        </div>
+    }
+</div>
+
+@code {
+    private string name = string.Empty;
+    private string role = string.Empty;
+    private int experience;
+    private string skills = string.Empty;
+    private string resultMarkdown = string.Empty;
+    private bool isLoading = false;
+
+    private async Task GenerateSummary()
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(role) ||
+            string.IsNullOrWhiteSpace(skills) || experience <= 0)
+        {
+            resultMarkdown = "⚠️ Please fill all fields properly.";
+            return;
+        }
+
+        isLoading = true;
+        resultMarkdown = string.Empty;
+
+        var builder = new StringBuilder();
+        builder.AppendLine("Generate three professional content sections for resume and profile based on the following:");
+        builder.AppendLine();
+        builder.AppendLine($"Name: {name}");
+        builder.AppendLine($"Role: {role}");
+        builder.AppendLine($"Experience: {experience} years");
+        builder.AppendLine($"Skills: {skills}");
+        builder.AppendLine();
+        builder.AppendLine("Include:");
+        builder.AppendLine("- Resume Summary (short paragraph)");
+        builder.AppendLine("- Email Bio (1-2 lines)");
+        builder.AppendLine("- LinkedIn Summary (professional tone, first person)");
+        builder.AppendLine();
+        builder.AppendLine("Format output using Markdown with proper section headers.");
+
+        var prompt = builder.ToString();
+
+
+        try
+        {
+            resultMarkdown = await OpenAIService.CreateChatResponse(prompt);
+        }
+        catch (Exception ex)
+        {
+            resultMarkdown = $"❌ Error: {ex.Message}";
+        }
+
+        isLoading = false;
+    }
+
+    private async Task ExportAsMarkdown()
+    {
+        await ExportFileAsync("resume-bio.md", resultMarkdown, "text/markdown");
+    }
+
+    private async Task ExportAsText()
+    {
+        await ExportFileAsync("resume-bio.txt", resultMarkdown, "text/plain");
+    }
+
+    private async Task ExportFileAsync(string filename, string content, string contentType)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        using var stream = new MemoryStream(bytes);
+        using var streamRef = new Microsoft.JSInterop.DotNetStreamReference(stream);
+
+        await JS.InvokeVoidAsync("downloadFileFromStream", filename, streamRef);
+    }
+}

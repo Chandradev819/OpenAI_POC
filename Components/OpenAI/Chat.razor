@@ -1,0 +1,49 @@
+﻿@page "/Chat"
+@using OpenAI_POC.Components
+@using OpenAI_POC.Helper
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm rounded-3">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">🤖 OpenAI Chat Demo</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="userPrompt" class="form-label fw-semibold">Your Message</label>
+                        <input type="text" id="userPrompt" class="form-control" @bind="userPrompt" placeholder="Type your prompt here..." />
+                    </div>
+                    <div class="d-grid">
+                        <button class="btn btn-success" @onclick="SendPrompt">Ask</button>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <strong>Response:</strong>
+                    @if (!string.IsNullOrEmpty(response))
+                    {
+                        <div class="mt-2">
+                            <div class="border rounded p-3" style="background-color: #f9f9f9;">
+                                @((MarkupString)MarkdownHelper.ToHtml(response))
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string userPrompt = string.Empty;
+    private string response = string.Empty;
+
+    private async Task SendPrompt()
+    {
+        response = "Thinking...";
+        StateHasChanged();
+        response = await OpenAIService.CreateChatResponse(userPrompt);
+    }
+}

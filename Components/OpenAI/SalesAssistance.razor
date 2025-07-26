@@ -1,0 +1,69 @@
+﻿@page "/sales-assistant"
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <div class="card shadow-sm rounded-4 p-4">
+                <h3 class="mb-4 text-primary">💼 Sales AI Assistant</h3>
+
+                <div class="mb-3">
+                    <label for="userQuestion" class="form-label fw-semibold">Ask a question</label>
+                    <input id="userQuestion" class="form-control form-control-lg" placeholder="e.g., How well did product 113045 sell in February?" @bind="UserQuestion" />
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-primary px-4" @onclick="AskAI" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <p>Thinking...</p>
+                        }
+                        else
+                        {
+                            <span>Ask</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Response))
+            {
+                <div class="card shadow-sm mt-4 rounded-4 p-4">
+                    <h5 class="mb-3 text-success">🧠 Assistant's Response</h5>
+                    <p class="mb-0">@Response</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string UserQuestion = "How well did product 113045 sell in February?";
+    private string Response;
+    private bool isLoading = false;
+
+    private async Task AskAI()
+    {
+        if (string.IsNullOrWhiteSpace(UserQuestion))
+            return;
+
+        isLoading = true;
+        Response = string.Empty;
+
+        try
+        {
+            Response = await OpenAIService.AskSalesQuestionAsync(UserQuestion);
+        }
+        catch (Exception ex)
+        {
+            Response = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
