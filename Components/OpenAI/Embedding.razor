@@ -2,24 +2,35 @@
 @using OpenAI_POC.Service
 @inject IOpenAIService OpenAIService
 
-<h3>OpenAI Text Embedding Demo</h3>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm rounded-4 border-0">
+                <div class="card-body">
+                    <h3 class="card-title mb-4 text-primary">🔍 OpenAI Text Embedding Demo</h3>
 
-<div class="mb-3">
-    <label for="inputText" class="form-label">Enter text:</label>
-    <textarea class="form-control" id="inputText" @bind="InputText" rows="4"></textarea>
-</div>
+                    <div class="mb-3">
+                        <label for="inputText" class="form-label fw-bold">Enter text to embed:</label>
+                        <textarea class="form-control shadow-sm" id="inputText" @bind="InputText" rows="4" placeholder="Type your text here..."></textarea>
+                    </div>
 
-<button class="btn btn-primary" @onclick="GenerateEmbeddingAsync">Generate Embedding</button>
+                    <button class="btn btn-success px-4" @onclick="GenerateEmbeddingAsync">
+                        🚀 Generate Embedding
+                    </button>
 
-@if (EmbeddingVector.Length > 0)
-{
-    <div class="mt-4">
-        <h5>Embedding Vector (Length: @EmbeddingVector.Length)</h5>
-        <div class="embedding-box">
-            <pre>@string.Join(", ", EmbeddingVector.Slice(0, Math.Min(20, EmbeddingVector.Length)).ToArray()) ...</pre>
+                    @if (EmbeddingVector.Length > 0)
+                    {
+                        <div class="mt-4 p-3 bg-light rounded border shadow-sm">
+                            <h5 class="text-secondary mb-2">📈 Embedding Vector</h5>
+                            <p class="text-muted">Length: <strong>@EmbeddingVector.Length</strong></p>
+                            <pre class="small text-wrap">@string.Join(", ", EmbeddingVector.Slice(0, Math.Min(20, EmbeddingVector.Length)).ToArray()) ...</pre>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
-}
+</div>
 
 @code {
     private string InputText = "Blazor is a powerful .NET web framework.";
@@ -29,9 +40,7 @@
     {
         try
         {
-            // Call async version instead of sync
-            var result = await Task.Run(() => OpenAIService.GetEmbeddingVector(InputText));
-            EmbeddingVector = result;
+            EmbeddingVector = await Task.Run(() => OpenAIService.GetEmbeddingVector(InputText));
         }
         catch (Exception ex)
         {

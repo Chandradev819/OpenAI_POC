@@ -1,0 +1,93 @@
+﻿@page "/markdown-article-generator"
+@using OpenAI_POC.Helper
+@using OpenAI_POC.Models
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+@inject IJSRuntime JS
+
+<div class="container my-4">
+    <h3 class="mb-4">📝 Markdown Article Generator</h3>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <input class="form-control" placeholder="Blog Title" @bind="_title" />
+        </div>
+        <div class="col-md-6">
+            <input class="form-control" placeholder="Target Audience" @bind="_audience" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary mb-4" @onclick="GenerateArticleAsync" disabled="@_isLoading">
+        @(_isLoading ? "Generating..." : "Generate Article")
+    </button>
+
+    @if (!string.IsNullOrWhiteSpace(_markdownContent))
+    {
+        <div class="card mb-3">
+            <div class="card-header fw-bold">📄 Preview (Markdown Rendered)</div>
+            <div class="card-body markdown-body">
+                @((MarkupString)_htmlContent)
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <button class="btn btn-outline-success me-2" @onclick="ExportMarkdown">📥 Export as .md</button>
+            <button class="btn btn-outline-secondary me-2" @onclick="ExportHtml">📥 Export as .html</button>
+            <button class="btn btn-outline-dark" @onclick="ExportText">📥 Export as .txt</button>
+        </div>
+    }
+</div>
+
+@code {
+    private string _title = "Getting Started with Blazor";
+    private string _audience = "Beginner Web Developers";
+    private string _markdownContent = string.Empty;
+    private string _htmlContent = string.Empty;
+    private string _plainTextContent = string.Empty;
+    private bool _isLoading = false;
+
+    private async Task GenerateArticleAsync()
+    {
+        _isLoading = true;
+        StateHasChanged(); 
+
+        try
+        {
+            var request = new MarkdownArticleRequest
+            {
+                Title = _title,
+                Audience = _audience
+            };
+
+            _markdownContent = await OpenAIService.GenerateMarkdownArticleAsync(request);
+            _htmlContent = Markdig.Markdown.ToHtml(_markdownContent);
+            _plainTextContent = Markdig.Markdown.ToPlainText(_markdownContent);
+        }
+        catch (Exception ex)
+        {
+            _markdownContent = $"Error: {ex.Message}";
+            _htmlContent = string.Empty;
+        }
+
+        _isLoading = false;
+        StateHasChanged(); 
+    }
+
+
+    private async Task ExportMarkdown() =>
+        await ExportFileAsync("article.md", _markdownContent, "text/markdown");
+
+    private async Task ExportHtml() =>
+        await ExportFileAsync("article.html", _htmlContent, "text/html");
+
+    private async Task ExportText() =>
+        await ExportFileAsync("article.txt", _plainTextContent, "text/plain");
+
+    private async Task ExportFileAsync(string filename, string content, string contentType)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        using var stream = new MemoryStream(bytes);
+        using var streamRef = new Microsoft.JSInterop.DotNetStreamReference(stream);
+        await JS.InvokeVoidAsync("downloadFileFromStream", filename, streamRef);
+    }
+}

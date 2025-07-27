@@ -1,0 +1,95 @@
+﻿@page "/persona-chat"
+@using OpenAI_POC.Helper
+@using OpenAI_POC.Models
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+
+<div class="container-fluid d-flex flex-column vh-100">
+    <!-- Header -->
+    <div class="bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">🧠 Chat with OpenAI</h5>
+        <div class="d-flex align-items-center">
+            <label class="form-label me-2 text-white mb-0 fw-bold">Persona:</label>
+            <select class="form-select form-select-sm w-auto" @bind="selectedPersona">
+                @foreach (var persona in personas.Keys)
+                {
+                    <option value="@persona">@persona</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <!-- Chat Messages Area -->
+    <div class="flex-grow-1 overflow-auto p-3 bg-light">
+        @foreach (var message in messages)
+        {
+            var isUser = message.Role == "You";
+            var bubbleClass = isUser ? "bg-success text-white py-2 px-3" : "bg-white border py-2 px-3";
+            var containerClass = isUser ? "d-flex justify-content-end" : "d-flex justify-content-start";
+
+            <div class="@containerClass mb-2">
+                <div class="@bubbleClass p-3 rounded shadow-sm" style="max-width: 75%; display: inline-block;">
+                    <div class="fw-bold small">@message.Role</div>
+                    <div class="markdown-body">
+                        @((MarkupString)MarkdownHelper.ToHtml(message.Content))
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (isLoading)
+        {
+            <div class="text-muted fst-italic">⏳ Thinking...</div>
+        }
+    </div>
+
+    <!-- Chat Input Footer -->
+    <div class="border-top bg-white p-3">
+        <div class="input-group">
+            <textarea class="form-control" rows="2" @bind="userPrompt" @bind:event="oninput" placeholder="Type your message here..." disabled="@isLoading"></textarea>
+            <button class="btn btn-primary" @onclick="SendMessage" disabled="@isLoading">Send</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string userPrompt = string.Empty;
+    private bool isLoading = false;
+    private string selectedPersona = "Default";
+    private List<ChatMessage> messages = new();
+    private Dictionary<string, string> personas = new()
+    {
+        { "Default", "You are a helpful assistant." },
+        { "Developer", "You are a senior C# and Blazor expert. Always include relevant code snippets in answers." },
+        { "Marketer", "You are a fun and engaging marketing assistant. Keep answers catchy and persuasive." },
+        { "Lawyer", "You are a formal legal assistant. Use clear and lawful tone with disclaimers where necessary." }
+    };
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(userPrompt)) return;
+
+        isLoading = true;
+        messages.Add(new ChatMessage("You", userPrompt));
+        StateHasChanged(); // Update UI immediately
+
+        try
+        {
+            var chatHistory = new List<ChatMessage> { new("system", personas[selectedPersona]) };
+            chatHistory.AddRange(messages
+                .Where(m => m.Role is "You" or "AI")
+                .Select(m => new ChatMessage(m.Role == "You" ? "user" : "AI", m.Content)));
+
+            var reply = await OpenAIService.CreateChatResponseAsync(chatHistory);
+            messages.Add(new ChatMessage("AI", reply));
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage("System", $"Error: {ex.Message} - {ex.InnerException?.Message}"));
+        }
+
+        userPrompt = string.Empty;
+        isLoading = false;
+        StateHasChanged(); // Update UI after response
+    }
+}

@@ -1,0 +1,47 @@
+﻿@page "/color-palette"
+@using OpenAI_POC.Service
+@inject IOpenAIService OpenAIService
+
+<div class="container py-5">
+
+<h3 class="mb-4">🎨 AI Color Palette Generator</h3>
+
+<div class="mb-3">
+    <label for="description" class="form-label">Enter Palette Description</label>
+    <input id="description" class="form-control" @bind="Description" placeholder="e.g., Calm ocean blues and sunset vibes" />
+</div>
+
+<button class="btn btn-success" @onclick="GeneratePaletteAsync">Generate Palette</button>
+
+@if (ColorPaletteList?.Any() == true)
+{
+    <div class="mt-4 d-flex gap-3 flex-wrap">
+        @foreach (var color in ColorPaletteList)
+        {
+            <div style="width:100px;height:100px;background-color:@color;border:1px solid #ccc;border-radius:8px;" title="@color">
+            </div>
+        }
+    </div>
+    <div class="mt-2">
+        <strong>Palette:</strong> @string.Join(", ", ColorPaletteList)
+    </div>
+}
+
+</div>
+@code {
+    private string Description = "";
+    private List<string> ColorPaletteList = new();
+
+    private async Task GeneratePaletteAsync()
+    {
+        try
+        {
+            string result = await OpenAIService.GenerateColorPaletteAsync(Description);
+            ColorPaletteList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(result) ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to generate palette: {ex.Message}");
+        }
+    }
+}
